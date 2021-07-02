@@ -272,10 +272,9 @@
 
                     await axios.post(API_BASE, jsonBody, {
 
-                        "headers": {
-
-                        "Content-Type": "application/json",
-
+                      headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
                     }}).then(function (response) {
                         
                         if(response.data) {
