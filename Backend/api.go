@@ -35,7 +35,7 @@ const (
 type Request struct {
 	Dates            []Date  `json:"dates"`
 	TollCode         string  `json:"TollCode"`
-	PaymentDirection float64 `json:"ParmentDirection"`
+	PaymentDirection float64 `json:"PaymentDirection"`
 }
 type Response struct {
 	Count   int      `json:"count"`
@@ -187,9 +187,10 @@ func ManejadorEnvioSolicitud(addr string, msgData NodoData) {
 }
 func AccederSeccionCritica(caso PeajeData) PeajeData {
 
-	var flujo_veh chan int64 = make(chan int64)
-	go algoritmo_knn(dataset_entrenamiento, caso, flujo_veh)
-	caso.Flujo_veh = <-flujo_veh
+	var flujo_veh int64
+	flujo_veh = algoritmo_knn(dataset_entrenamiento, caso)
+	caso.Flujo_veh = flujo_veh
+	fmt.Println(caso, direccion_nodo)
 	return caso
 }
 func ManejadorSolicitud(conn net.Conn) {
@@ -249,27 +250,27 @@ func AtenderRespuesta() {
 }
 
 //funciones modelo de ML
-func dist_euclidiana(modelo, test PeajeData, distasync chan float64) {
+func dist_euclidiana(modelo, test PeajeData) float64 {
 	mes_dist := math.Pow(test.Mes-modelo.Mes, 2)
 	dia_dist := math.Pow(test.Dia-modelo.Dia, 2)
 	sent_cobro_dist := math.Pow(test.Sent_cobro-modelo.Sent_cobro, 2)
 	codigo_dis := math.Pow(test.Codigo-modelo.Codigo, 2)
 	response := math.Sqrt(mes_dist + dia_dist + sent_cobro_dist + codigo_dis)
-	distasync <- response
+	return response
 }
-func algoritmo_knn(modelo []PeajeData, test PeajeData, respuesta chan int64) {
+func algoritmo_knn(modelo []PeajeData, test PeajeData) int64 {
 	var modelo_validacion []PeajeData
-	distasync := make(chan float64)
+
+	fmt.Println(len(modelo))
 	for _, one := range modelo {
-		go dist_euclidiana(one, test, distasync)
-		one.ditancia = <-distasync
+		one.ditancia = dist_euclidiana(one, test)
 		modelo_validacion = append(modelo_validacion, one)
 	}
 	sort.SliceStable(modelo_validacion, func(x, y int) bool {
 		comparacion := modelo_validacion[x].ditancia < modelo_validacion[y].ditancia
 		return comparacion
 	})
-	respuesta <- modelo_validacion[:K][0].Flujo_veh
+	return modelo_validacion[:K][0].Flujo_veh
 }
 func convertirData(archivo [][]string) {
 	for i := 1; i < len(archivo); i++ {
@@ -340,27 +341,13 @@ func obtenerFlujoVehicular(res http.ResponseWriter, req *http.Request) {
 		}()
 	}
 
-	// anio, _ := strconv.ParseFloat(req.FormValue("anio"), 32)
-	// mes, _ := strconv.ParseFloat(req.FormValue("mes"), 64)
-	// dia, _ := strconv.ParseFloat(req.FormValue("dia"), 64)
-	// codigo, _ := strconv.ParseFloat(req.FormValue("codigo"), 64)
-	// sent_cobro, _ := strconv.ParseFloat(req.FormValue("sent_cobro"), 64)
-	// fmt.Println(anio)
-	// var test PeajeData = PeajeData{
-	// 	Anio:       anio,
-	// 	Mes:        mes,
-	// 	Dia:        dia,
-	// 	Codigo:     codigo,
-	// 	Sent_cobro: sent_cobro,
-	// }
-
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 	res.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	res.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Authorization")
 	res.Header().Set("Content-Type", "application/json")
 	for {
-		go AtenderRespuesta()
-		if len(PeajeDataResponse) >= total_datos {
+		fmt.Println("valores", len(PeajeDataResponse), total_datos)
+		if len(PeajeDataResponse) == total_datos {
 			break
 		}
 	}
@@ -373,12 +360,10 @@ func obtenerFlujoVehicular(res http.ResponseWriter, req *http.Request) {
 		response.Results = append(response.Results, test)
 	}
 	response.Count = len(response.Results)
-	// var flujo_veh chan int64 = make(chan int64)
 
-	// go algoritmo_knn(dataset_entrenamiento, test, flujo_veh)
-	// test.Flujo_veh = <-flujo_veh
 	json.NewEncoder(res).Encode(response)
 }
+
 func handlerRequest() {
 	http.HandleFunc("/flujovehiculo", obtenerFlujoVehicular)
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -395,9 +380,10 @@ func main() {
 	//configuracion de los nodos
 	go AtenderRegistroCliente()
 	go AtenderNofificaciones()
-
+	go AtenderRespuesta()
 	if numero_nodo == 0 {
 		handlerRequest()
+
 	} else {
 		bufferIn := bufio.NewReader(os.Stdin) //ingreso por consola
 		fmt.Println("ingrese la ip del host para solicitud: ")
