@@ -34,8 +34,8 @@ const (
 
 type Request struct {
 	Dates            []Date  `json:"dates"`
-	TollCode         string  `json:"TollCode"`
-	PaymentDirection float64 `json:"PaymentDirection"`
+	TollCode         string  `json:"tollCode"`
+	PaymentDirection float64 `json:"paymentDirection"`
 }
 type Response struct {
 	Count   int      `json:"count"`
@@ -318,6 +318,7 @@ func obtenerFlujoVehicular(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	PeajeDataResponse = []PeajeData{}
 	total_datos := len(request.Dates)
 	for i := 0; i < total_datos; i++ {
 		codigo, _ := strconv.ParseFloat(request.TollCode, 64)
@@ -342,7 +343,7 @@ func obtenerFlujoVehicular(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Header().Set("Access-Control-Allow-Origin", "*")
-	res.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	res.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	res.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Authorization")
 	res.Header().Set("Content-Type", "application/json")
 	for {
@@ -360,7 +361,7 @@ func obtenerFlujoVehicular(res http.ResponseWriter, req *http.Request) {
 		response.Results = append(response.Results, test)
 	}
 	response.Count = len(response.Results)
-
+	res.WriteHeader(http.StatusCreated)
 	json.NewEncoder(res).Encode(response)
 }
 
