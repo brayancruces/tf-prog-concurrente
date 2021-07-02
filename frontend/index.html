@@ -1,80 +1,311 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/bootstrap.css" />
-    <title>Flujo de vehículo por fecha y lugar de peaje</title>
+    <meta charset="utf-8">
+    <title>Trafico Peajes Perú Predictor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
 </head>
+
 <body>
-    <br>
-    <div class="container">
-        <h1>flujo de vehículos</h1>
-    </div>
-    <div class="container">
-    <div class="form">
-        <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Mes (introducir número)</label>
-            <input type="number" class="form-control" id="mes" >
-        </div>
-        <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Día (introducir número)</label>
-            <input type="number" class="form-control" id="dia">
-        </div>
-        <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Peaje</label>
-            <select id="codigo" class="form-select" aria-label="Default select example">
-                <option selected>Seleccione un peaje</option>
-                <option value="A1">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP BAYOVAR
-                </option>
-                <option value="A2">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP CHICAMA
-                </option>
-                <option value="A3">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP MÓRROPE
-                </option>
-                <option value="A4">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP PACANGUILLA
-                </option>
-                <option value="A5">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP SULLANA
-                </option>
-                <option value="A6">CORREDOR VIAL INTEROCEÁNICO SUR PERÚ -BRASIL, TRAMO 1: MARCONA - URCOS - SURVIAL S.A. -
-                    CCASACANCHA
-                </option>
-                <option value="A7">CORREDOR VIAL INTEROCEÁNICO SUR PERÚ -BRASIL, TRAMO 1: MARCONA - URCOS - SURVIAL S.A. - PAMPA
-                    GALERAS
-                </option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Sentido de cobro</label>
-            <select id="sent_cobro" class="form-select" aria-label="Default select example">
-                <option selected>Seleccione un sentido</option>
-                <option value="0">Ascendente</option>
-                <option value="1">Descendente</option>
-            </select>
-        </div>
-       
-        <button id="submit-btn" class="btn btn-primary">Consultar flujo vehicular</button>
+    <div id="app">
+        <!-- Buefy components goes here -->
+        <section class="hero is-primary">
+            <div class="hero-body">
+              <p class="title">
+                Trafico Peajes Perú Predictor
+              </p>
+              <p class="subtitle">
+                ¿Saldrás de viaje? Predice el tráfico de vehiculos en los peajes dentro del Perú
+              </p>
+            </div>
+        </section> 
+
+
+        <div class="container">
+            <div class="box mt-4"> 
+
+                <div class="columns">
+                    <div class="column">
+                        <h4 class="title is-4">Información</h4>
+                    </div>
+
+                </div>
+                
+
+                <div class="columns">
+                    <div class="column"> 
+
+                        <section class="m-4">
+
+                            <h5 class="title is-5">1. Colocar fechas de pases (Máx 5) </h5> 
+
+                            <section>
+                                
+                                <div 
+                                v-for="(dateItem, counter) in datesContent"
+                                v-bind:key="counter">
+
+                                    <b-field label="Selecciona fecha">
+                                        <b-datepicker
+                                            v-model="dateItem.date"
+                                            :show-week-number="showWeekNumber"
+                                            :locale="locale"
+                                            placeholder="Elige una fecha..."
+                                            icon="calendar-today"
+                                            trap-focus>
+                                        </b-datepicker>
+                                    </b-field> 
+                                    
+                                </div>
+
+                                
+
+                                <b-button v-if="countDates<5" @click="addDate" type="is-ghost">+ Añadir fecha</b-button>
+
+                            </section>
+
+
+                        </section>
+                        
+                        
+                    </div>
+                    <div class="column is-two-fifths">
+
+                        <section class="m-4">
+                            <h5 class="title is-4">2. Peaje</h5>
+                        
+                            <b-field label="Selecciona el peaje">
+                                <b-select v-model="selectPeaje" placeholder="Selecciona el peaje" required>
+                                
+                                    <option v-for="option in listPeajes" v-bind:value="option.id">
+                                        {{ option.text }}
+                                    </option>
+                                </b-select>
+                            </b-field>
+
+                       </section>
+
+                    </div>
+                   
+                    <div class="column is-two-fifths">
+
+                        <section class="m-4">
+                            <h5 class="title is-4">3. Sentido del cobro</h5>
+                
+                            <b-field label="Selecciona el sentido">
+                                <b-select v-model="selectSentido" placeholder="Selecciona el sentido" required>
+                                
+                                    <option v-for="option in listSentido" v-bind:value="option.id">
+                                        {{ option.text }}
+                                    </option>
+                                </b-select>
+                            </b-field>
+                       </section>
+
+                    </div>
+                  </div>
+
+
+                  <section >
+                    <b-button @click="clickCalculate" type="is-primary">Proceder con calculo</b-button>
+                  </section>
+
+
+
+                  
+
+            </div>
+
+
+            
+
+
+            
+              
         
-    </div>
-    <br>
+        </div>
+
+        <div class="container">
+
+            <div class="box mt-4"> 
+
+                <div class="columns">
+                    <div class="column">
+                        <h4 class="title is-4">Resultados</h4>
+                    </div>
+
+                </div> 
+
+                <div class="columns">
+                    <div class="column">
+                        <b-table :data="dataResults" :columns="columnsTable"></b-table>
+
+                    </div>
+                </div>
+
+            </div>
+
+
+        </div>
+
+        
+
+        
+        <footer class="footer">
+            <div class="content has-text-centered">
+              <p>
+                <strong>Trafico Peajes Perú Predictor</strong>
+              </p>
+            </div>
+          </footer>
+
+
 
     </div>
-    <div class="container">
-        <div class="row">
-            <div class="col"><h2 class="display-2">El flujo será</h2></div>
-            <div class="col"><h3 class="display-2" id="resultado_pred">0</h3></div>
-           
-        
-    </div>
-      <br>
-        <h4 class="blockquote">0: Bajo (0-1536 vehiculos)</h4>
-        <h4 class="blockquote">1: Medio bajo (1536-3072 vehiculos)</h4>
-        <h4 class="blockquote">2: Medio (3072-4608 vehiculos)</h4>
-        <h4 class="blockquote">3: Medio alto (4608-6144 vehiculos)</h4>
-        <h4 class="blockquote">4: Alto (6144-7680 vehiculos)</h4>
-    </div>
-    <script src="js/bootstrap.js"></script>
-    <script src="function.js"></script>
 
+    <script src="https://unpkg.com/vue"></script>
+    <!-- Full bundle -->
+    <script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
+
+    <!-- Individual components -->
+    <script src="https://unpkg.com/buefy/dist/components/table"></script>
+    <script src="https://unpkg.com/buefy/dist/components/input"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    
+
+    <script> 
+
+    var API_BASE = 'http://localhost:8080/flujovehiculo';
+
+    var list_peajes = [
+    { text: "AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP BAYOVAR", id: 'A1' },
+    { text: "AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP CHICAMA", id: 'A2' },
+    { text: "AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP MÓRROPE", id: 'A3' },
+    { text: "AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP PACANGUILLA", id: 'A4' },
+    { text: "AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP SULLANA", id: 'A5' },
+    { text: "CORREDOR VIAL INTEROCEÁNICO SUR PERÚ -BRASIL, TRAMO 1: MARCONA - URCOS - SURVIAL S.A. -CCASACANCHA", id: 'A6' },
+    { text: "CORREDOR VIAL INTEROCEÁNICO SUR PERÚ -BRASIL, TRAMO 1: MARCONA - URCOS - SURVIAL S.A. - PAMPA GALERAS", id: 'A7' }
+    ]; 
+
+    var list_sentido = [
+    { text: "Ascendente", id: 0 },
+    { text: "Descendente", id: 1 }
+    ]; 
+
+        new Vue({
+            el: '#app',
+            data() {
+                const today = new Date()
+
+                return { 
+                    minDate: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+                    showWeekNumber: false,
+                    locale: 'es-ES', 
+
+                    // Listados
+                    listPeajes: list_peajes,  
+                    listSentido: list_sentido,
+
+
+                    // Selects 
+                    selectPeaje: '',
+                    selectSentido: '',  
+
+                    // Dates
+                    datesContent: [{ date: new Date() }],
+                    countDates: 1, 
+
+
+                
+
+                    // Tabla
+                    dataResults: [],
+                    dataTable: [
+                        { 'id': 1,  'date': '2016-10-15', 'flujo': '0' },
+                        { 'id': 2, 'date': '2016-12-15', 'flujo': '1' },
+                        { 'id': 3, 'date': '2016-04-26', 'flujo': '2' }
+                    ],
+                    columnsTable: [
+                        
+                        {
+                            field: 'date',
+                            label: 'Fecha',
+                            centered: true
+                        },
+                        {
+                            field: 'score',
+                            label: 'Flujo',
+                        }
+                    ]
+
+
+
+                }
+            },
+
+            methods: {
+                async clickCalculate() {
+                    this.$buefy.notification.open('Se esta procediendo con el cálculo...') 
+
+                    console.log(this.datesContent); 
+                    
+
+                    var tollCode = this.selectPeaje; 
+                    var paymentDirection = this.selectSentido; 
+                    var dates = [];   
+                    
+
+                    for (var i = 0; i < this.datesContent.length; i++) {
+                        var day = this.datesContent[i].date;
+                        dates.push({ "day": day.getDate(), "month": day.getMonth() +1,"year": day.getFullYear() });
+
+                    }
+
+                    const jsonBody = JSON.stringify({ tollCode: tollCode, paymentDirection: paymentDirection, dates: dates });
+
+                    console.log(jsonBody);
+
+                    // Enviar petición POST al backend  
+
+                    await axios.post(API_BASE, jsonBody, {
+
+                      headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }}).then(function (response) {
+                        
+                        if(response.data) {
+
+                            this.dataResults = response.data.results;
+                        }
+                    }); 
+
+                   
+
+                    
+
+                },
+
+                
+
+                addDate(){ 
+
+                    if(this.countDates<5) {
+                        this.datesContent.push({
+                            date:''
+                        }) 
+
+                        this.countDates++;
+                    }
+                    
+                },
+
+
+            }
+        })
+    </script>
 </body>
 </html>
