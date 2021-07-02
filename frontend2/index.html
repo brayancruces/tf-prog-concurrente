@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/bootstrap.css" />
+    <title>Flujo de vehículo por fecha y lugar de peaje</title>
+</head>
+<body>
+    <br>
+    <div class="container">
+        <h1>flujo de vehículos</h1>
+    </div>
+    <div class="container">
+    <div class="form">
+        <div class="mb-3">
+            <label for="exampleInputEmail1" class="form-label">Mes (introducir número)</label>
+            <input type="number" class="form-control" id="mes" >
+        </div>
+        <div class="mb-3">
+            <label for="exampleInputEmail1" class="form-label">Día (introducir número)</label>
+            <input type="number" class="form-control" id="dia">
+        </div>
+        <div class="mb-3">
+            <label for="exampleInputEmail1" class="form-label">Peaje</label>
+            <select id="codigo" class="form-select" aria-label="Default select example">
+                <option selected>Seleccione un peaje</option>
+                <option value="A1">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP BAYOVAR
+                </option>
+                <option value="A2">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP CHICAMA
+                </option>
+                <option value="A3">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP MÓRROPE
+                </option>
+                <option value="A4">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP PACANGUILLA
+                </option>
+                <option value="A5">AUTOPISTA DEL SOL, TRAMO TRUJILLO-SULLANA - CONCESIONARIA VIAL DEL SOL S.A. - UP SULLANA
+                </option>
+                <option value="A6">CORREDOR VIAL INTEROCEÁNICO SUR PERÚ -BRASIL, TRAMO 1: MARCONA - URCOS - SURVIAL S.A. -
+                    CCASACANCHA
+                </option>
+                <option value="A7">CORREDOR VIAL INTEROCEÁNICO SUR PERÚ -BRASIL, TRAMO 1: MARCONA - URCOS - SURVIAL S.A. - PAMPA
+                    GALERAS
+                </option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="exampleInputEmail1" class="form-label">Sentido de cobro</label>
+            <select id="sent_cobro" class="form-select" aria-label="Default select example">
+                <option selected>Seleccione un sentido</option>
+                <option value="0">Ascendente</option>
+                <option value="1">Descendente</option>
+            </select>
+        </div>
+       
+        <button id="submit-btn" class="btn btn-primary">Consultar flujo vehicular</button>
+        
+    </div>
+    <br>
+
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col"><h2 class="display-2">El flujo será</h2></div>
+            <div class="col"><h3 class="display-2" id="resultado_pred">0</h3></div>
+           
+        
+    </div>
+      <br>
+        <h4 class="blockquote">0: Bajo (0-1536 vehiculos)</h4>
+        <h4 class="blockquote">1: Medio bajo (1536-3072 vehiculos)</h4>
+        <h4 class="blockquote">2: Medio (3072-4608 vehiculos)</h4>
+        <h4 class="blockquote">3: Medio alto (4608-6144 vehiculos)</h4>
+        <h4 class="blockquote">4: Alto (6144-7680 vehiculos)</h4>
+    </div>
+    <script src="js/bootstrap.js"></script>
+    <script src="function.js"></script>
+
+</body>
+</html>
