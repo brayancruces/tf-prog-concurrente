@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,29 +19,17 @@ import (
 var dataset_entrenamiento = []PeajeData{}
 var K int = 1
 var direccion_nodo string
+var direccion_root string
 var direcciones []string
 var puedeIniciar chan bool
-var chMyInfo chan MyInfo
-
-type Info struct {
-	Tipo     string //tipo de mensaje
-	NodeNum  int    //nro de ticket del nodo que solicita el permiso
-	NodeAddr string //ip del nodo que solicita el permiso
-}
-
-type MyInfo struct {
-	contMsg  int  //control de los mensajes recibidos
-	first    bool //si le toca acceder a la sección crítica
-	nextNum  int  //proximo ticket
-	nextAddr string
-}
+var PeajeDataResponse = []PeajeData{}
 
 const (
-	numero_nodo       = 1
-	puerto_registro   = 8000
-	puerto_notifica   = 8001
-	puerto_proceso_hp = 8002
-	puerto_solicitud  = 8003
+	numero_nodo           = 0
+	puerto_registro       = 8000
+	puerto_notifica       = 8001
+	puerto_solicitud      = 8002
+	puerto_root_respuesta = 8003
 )
 
 type Request struct {
@@ -60,6 +49,10 @@ type Date struct {
 	Day   float64 `json:"day"`
 	Month float64 `json:"month"`
 	Year  float64 `json:"year"`
+}
+type NodoData struct {
+	PeajeDate  PeajeData
+	RemoteRoot string
 }
 type PeajeData struct {
 	Anio         float64
@@ -181,7 +174,7 @@ func RegistrarCliente(ipremoto string) {
 	fmt.Println(direcciones)                       //imprimir bitacora de clientes
 
 }
-func ManejadorEnvioSolicitudes(addr string, msgInfo Info) {
+func ManejadorEnvioSolicitud(addr string, msgData NodoData) {
 	addr = strings.TrimSpace(addr)
 	remoteHost := fmt.Sprintf("%s:%d", addr, puerto_solicitud)
 	//llamada al ip remoto
@@ -189,8 +182,70 @@ func ManejadorEnvioSolicitudes(addr string, msgInfo Info) {
 	defer conn.Close()
 	//notifico
 	//codificar el mensaje
-	bytesMsg, _ := json.Marshal(msgInfo)
+	bytesMsg, _ := json.Marshal(msgData)
 	fmt.Fprintln(conn, string(bytesMsg)) //enviando el mensaje serializado en string
+}
+func AccederSeccionCritica(caso PeajeData) PeajeData {
+
+	var flujo_veh chan int64 = make(chan int64)
+	go algoritmo_knn(dataset_entrenamiento, caso, flujo_veh)
+	caso.Flujo_veh = <-flujo_veh
+	return caso
+}
+func ManejadorSolicitud(conn net.Conn) {
+	defer conn.Close()
+	//lógica del servicio
+	bufferIn := bufio.NewReader(conn)
+	msgInfo, _ := bufferIn.ReadString('\n')
+	var data NodoData
+	json.Unmarshal([]byte(msgInfo), &data)
+
+	fmt.Println(data)
+	//logica de turnos, recibe el mensaje
+
+	response := AccederSeccionCritica(data.PeajeDate)
+	ManejadorRespuesta(response, data.RemoteRoot)
+}
+func AtenderSolicitudes() {
+	//modo: escucha
+	localhost := fmt.Sprintf("%s:%d", direccion_nodo, puerto_solicitud)
+	ln, _ := net.Listen("tcp", localhost)
+	for {
+		conn, _ := ln.Accept()
+		go ManejadorSolicitud(conn)
+	}
+
+}
+func ManejadorRespuesta(peaje PeajeData, dir_root string) {
+	dir_root = strings.TrimSpace(dir_root)
+	remoteHost := fmt.Sprintf("%s:%d", dir_root, puerto_root_respuesta)
+	//llamada al ip remoto
+	conn, _ := net.Dial("tcp", remoteHost)
+	defer conn.Close()
+	//notifico
+	//codificar el mensaje
+	bytesMsg, _ := json.Marshal(peaje)
+	fmt.Fprintln(conn, string(bytesMsg))
+}
+func ManejadorCentralRespuesta(conn net.Conn) {
+	defer conn.Close()
+	//lógica del servicio
+	bufferIn := bufio.NewReader(conn)
+	msgInfo, _ := bufferIn.ReadString('\n')
+	var data PeajeData
+	json.Unmarshal([]byte(msgInfo), &data)
+	PeajeDataResponse = append(PeajeDataResponse, data)
+
+	//logica de turnos, recibe el mensaje
+
+}
+func AtenderRespuesta() {
+	localhost := fmt.Sprintf("%s:%d", direccion_nodo, puerto_root_respuesta)
+	ln, _ := net.Listen("tcp", localhost)
+	for {
+		conn, _ := ln.Accept()
+		go ManejadorCentralRespuesta(conn)
+	}
 }
 
 //funciones modelo de ML
@@ -262,10 +317,29 @@ func obtenerFlujoVehicular(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("request", request.PaymentDirection)
-	fmt.Println("request", request.TollCode)
-	fmt.Println("request", len(request.Dates))
-	fmt.Println(req.FormValue("anio"))
+	total_datos := len(request.Dates)
+	for i := 0; i < total_datos; i++ {
+		codigo, _ := strconv.ParseFloat(request.TollCode, 64)
+		msgPeaje := PeajeData{
+			Sent_cobro: request.PaymentDirection,
+			Anio:       request.Dates[i].Year,
+			Mes:        request.Dates[i].Month,
+			Dia:        request.Dates[i].Day,
+			Codigo:     codigo,
+		}
+		msgNodo := NodoData{
+			PeajeDate:  msgPeaje,
+			RemoteRoot: direccion_nodo,
+		}
+		go func() {
+			//crear mensaje de la solicitud
+			//Notificar al resto de nodos de la red, la solicitud
+			for _, addr := range direcciones {
+				go ManejadorEnvioSolicitud(addr, msgNodo)
+			}
+		}()
+	}
+
 	// anio, _ := strconv.ParseFloat(req.FormValue("anio"), 32)
 	// mes, _ := strconv.ParseFloat(req.FormValue("mes"), 64)
 	// dia, _ := strconv.ParseFloat(req.FormValue("dia"), 64)
@@ -284,12 +358,20 @@ func obtenerFlujoVehicular(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	res.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Authorization")
 	res.Header().Set("Content-Type", "application/json")
-	response := Response{}
-	var test Result = Result{
-		Date:  "22-02-2021",
-		Score: 2,
+	for {
+		go AtenderRespuesta()
+		if len(PeajeDataResponse) >= total_datos {
+			break
+		}
 	}
-	response.Results = append(response.Results, test)
+	response := Response{}
+	for _, data := range PeajeDataResponse {
+		var test Result = Result{
+			Date:  fmt.Sprintf("%g", data.Dia) + "-" + fmt.Sprintf("%g", data.Mes) + "-" + fmt.Sprintf("%g", data.Anio),
+			Score: float64(data.Flujo_veh),
+		}
+		response.Results = append(response.Results, test)
+	}
 	response.Count = len(response.Results)
 	// var flujo_veh chan int64 = make(chan int64)
 
@@ -309,23 +391,23 @@ func lecturaDataset() {
 func main() {
 	lecturaDataset()
 	direccion_nodo = iplocal()
-	// fmt.Println("IP: ", direccion_nodo)
-	// go AtenderRegistroCliente()
+	fmt.Println("IP: ", direccion_nodo)
+	//configuracion de los nodos
+	go AtenderRegistroCliente()
+	go AtenderNofificaciones()
 
-	// bufferIn := bufio.NewReader(os.Stdin) //ingreso por consola
-	// fmt.Println("ingrese la ip del host para solicitud: ")
-	// ipremoto, _ := bufferIn.ReadString('\n')
-	// ipremoto = strings.TrimSpace(ipremoto)
-	// if ipremoto != "" {
-	// 	//solo para nuevos nodos
-	// 	RegistrarCliente(ipremoto)
-	// }
-	// go AtenderNofificaciones()
-	// puedeIniciar = make(chan bool)
-	// chMyInfo = make(chan MyInfo)
-	// go func() {
-	// 	chMyInfo <- MyInfo{0, true, 1000001, ""}
-	// }()
+	if numero_nodo == 0 {
+		handlerRequest()
+	} else {
+		bufferIn := bufio.NewReader(os.Stdin) //ingreso por consola
+		fmt.Println("ingrese la ip del host para solicitud: ")
+		ipremoto, _ := bufferIn.ReadString('\n')
+		ipremoto = strings.TrimSpace(ipremoto)
+		if ipremoto != "" {
+			//solo para nuevos nodos
+			RegistrarCliente(ipremoto)
+		}
+		AtenderSolicitudes()
+	}
 
-	handlerRequest()
 }
